@@ -122,6 +122,29 @@
       border-color: #818cf8;
       box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
     }
+
+    .toggle-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(45, 50, 71, 0.5);
+      color: #e2e8f0;
+    }
+
+    .toggle-btn.active {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #ffffff;
+    }
   </style>
 </head>
 <body class="min-h-full flex flex-col font-sans overflow-hidden bg-dark-bg text-slate-100 antialiased">
@@ -138,11 +161,24 @@
     </div>
   </header>
 
-  <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+  <main class="flex-1 overflow-y-auto p-4 sm:p-6 pb-12">
     <div class="max-w-7xl mx-auto space-y-6">
 
       <section class="glass-panel rounded-2xl p-5 sm:p-6 space-y-4">
-        <h2 class="text-lg font-bold text-white">Plan your upcoming weekend</h2>
+        <h2 class="text-lg font-bold text-white">Plan your weekend</h2>
+
+        <!-- Weekend selector (shown conditionally) -->
+        <div id="weekend-selector" class="hidden space-y-2">
+          <p class="text-sm text-slate-400">Which weekend would you like to plan?</p>
+          <div class="flex gap-2">
+            <button id="btn-current-weekend" class="toggle-btn active">
+              📅 This weekend
+            </button>
+            <button id="btn-next-weekend" class="toggle-btn">
+              📅 Next weekend
+            </button>
+          </div>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
@@ -203,7 +239,7 @@
         <div id="weather-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
       </section>
 
-      <section id="activities-section" class="hidden space-y-4">
+      <section id="activities-section" class="hidden space-y-4 pb-8">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-bold text-white">Your personalized plan</h2>
           <button id="regenerate-btn" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition">
@@ -220,10 +256,12 @@
     const state = {
       zipCode: '',
       selectedActivities: ['outdoor', 'dining'],
+      weekendMode: 'current', // 'current' or 'next'
       weekendDates: null,
       weatherData: null,
       coordinates: null,
-      activities: []
+      activities: [],
+      isInWeekend: false
     };
 
     const elements = {
@@ -238,41 +276,72 @@
       activitiesSection: document.getElementById('activities-section'),
       activitiesGrid: document.getElementById('activities-grid'),
       weekendRange: document.getElementById('weekend-range'),
-      checkboxes: document.querySelectorAll('.activity-checkbox')
+      checkboxes: document.querySelectorAll('.activity-checkbox'),
+      weekendSelector: document.getElementById('weekend-selector'),
+      btnCurrentWeekend: document.getElementById('btn-current-weekend'),
+      btnNextWeekend: document.getElementById('btn-next-weekend')
     };
 
-    function getUpcomingWeekend() {
+    // Check if currently within a weekend (Fri 6pm - Sun 11:59pm)
+    function checkIfInWeekend() {
+      const now = new Date();
+      const day = now.getDay();
+      const hours = now.getHours();
+
+      // Friday from 6pm (18:00) onwards
+      if (day === 5 && hours >= 18) return true;
+      // Saturday (all day)
+      if (day === 6) return true;
+      // Sunday until 11:59pm
+      if (day === 0 && hours < 24) return true;
+
+      return false;
+    }
+
+    function getWeekendDates(whichWeekend) {
       const today = new Date();
       const currentDay = today.getDay();
+      const currentHours = today.getHours();
 
-      let friday = new Date(today);
-      let saturday = new Date(today);
-      let sunday = new Date(today);
+      let fridayDate = new Date(today);
+      let saturdayDate = new Date(today);
+      let sundayDate = new Date(today);
 
-      if (currentDay === 5) {
-        friday = new Date(today);
-        saturday = new Date(today.getTime() + 86400000);
-        sunday = new Date(today.getTime() + 172800000);
-      } else if (currentDay === 6) {
-        friday = new Date(today.getTime() - 86400000);
-        saturday = new Date(today);
-        sunday = new Date(today.getTime() + 86400000);
-      } else if (currentDay === 0) {
-        friday = new Date(today.getTime() - 172800000);
-        saturday = new Date(today.getTime() - 86400000);
-        sunday = new Date(today);
+      // Determine which Friday to use
+      let targetFriday;
+
+      if (whichWeekend === 'current' && checkIfInWeekend()) {
+        // Current weekend - the Friday of this weekend
+        if (currentDay === 5) {
+          targetFriday = new Date(today);
+        } else if (currentDay === 6) {
+          targetFriday = new Date(today.getTime() - 86400000);
+        } else if (currentDay === 0) {
+          targetFriday = new Date(today.getTime() - 172800000);
+        }
       } else {
-        const daysUntilFriday = (5 - currentDay + 7) % 7 || 7;
-        friday = new Date(today.getTime() + daysUntilFriday * 86400000);
-        saturday = new Date(today.getTime() + (daysUntilFriday + 1) * 86400000);
-        sunday = new Date(today.getTime() + (daysUntilFriday + 2) * 86400000);
+        // Next weekend - the upcoming Friday
+        if (currentDay === 5 && currentHours < 18) {
+          // Friday before 6pm, next weekend starts today at 6pm
+          targetFriday = new Date(today);
+        } else if (currentDay === 0 && currentHours >= 0) {
+          // Sunday, next weekend is in 5 days
+          targetFriday = new Date(today.getTime() + 5 * 86400000);
+        } else {
+          const daysUntilFriday = (5 - currentDay + 7) % 7 || 7;
+          targetFriday = new Date(today.getTime() + daysUntilFriday * 86400000);
+        }
       }
 
+      fridayDate = targetFriday;
+      saturdayDate = new Date(targetFriday.getTime() + 86400000);
+      sundayDate = new Date(targetFriday.getTime() + 172800000);
+
       return {
-        friday,
-        saturday,
-        sunday,
-        rangeText: `${formatDateShort(friday)} - ${formatDateShort(sunday)}`
+        friday: fridayDate,
+        saturday: saturdayDate,
+        sunday: sundayDate,
+        rangeText: `${formatDateShort(fridayDate)} - ${formatDateShort(sundayDate)}`
       };
     }
 
@@ -569,7 +638,7 @@
       showLoading();
 
       try {
-        state.weekendDates = getUpcomingWeekend();
+        state.weekendDates = getWeekendDates(state.weekendMode);
         elements.weekendRange.textContent = state.weekendDates.rangeText;
 
         const coordinates = await geocodeZipCode(state.zipCode);
@@ -579,7 +648,7 @@
         const weekendWeather = filterWeekendWeather(periods);
 
         if (!weekendWeather.length) {
-          throw new Error('Weather data was unavailable for the upcoming weekend.');
+          throw new Error('Weather data was unavailable for that weekend.');
         }
 
         state.weatherData = weekendWeather;
@@ -604,8 +673,16 @@
       displayActivities(state.activities);
     }
 
+    function toggleWeekendMode(mode) {
+      state.weekendMode = mode;
+      elements.btnCurrentWeekend.classList.toggle('active', mode === 'current');
+      elements.btnNextWeekend.classList.toggle('active', mode === 'next');
+    }
+
     elements.generateBtn.addEventListener('click', generateWeekendPlan);
     elements.regenerateBtn.addEventListener('click', regeneratePlan);
+    elements.btnCurrentWeekend.addEventListener('click', () => toggleWeekendMode('current'));
+    elements.btnNextWeekend.addEventListener('click', () => toggleWeekendMode('next'));
     elements.zipCodeInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') generateWeekendPlan();
     });
@@ -613,8 +690,14 @@
       box.addEventListener('change', updateSelectedActivities);
     });
 
-    state.weekendDates = getUpcomingWeekend();
-    elements.weekendRange.textContent = state.weekendDates.rangeText;
+    // Initialize
+    state.isInWeekend = checkIfInWeekend();
+    if (state.isInWeekend) {
+      elements.weekendSelector.classList.remove('hidden');
+      state.weekendMode = 'current';
+    } else {
+      state.weekendMode = 'next';
+    }
   </script>
 </body>
 </html>
