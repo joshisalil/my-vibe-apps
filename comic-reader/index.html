@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#08080a] text-slate-100 dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>PanelPulse PDF Comic Reader</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- PDF.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Bangers&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            comic: ['Bangers', 'cursive'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              amber: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e',
+            },
+            dark: {
+              bg: '#08080a',
+              surface: '#12141d',
+              card: '#1a1d29',
+              border: '#282c3f',
+              hover: '#2d3247'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #08080a; }
+    ::-webkit-scrollbar-thumb { background: #282c3f; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+
+    .ipad-viewport {
+      height: 100vh;
+      height: 100dvh;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .glass-panel {
+      background: rgba(18, 20, 29, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-pill {
+      background: rgba(26, 29, 41, 0.92);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .touch-tap-flash {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+      transform: scale(0);
+      animation: tapFlash 0.35s ease-out forwards;
+    }
+
+    @keyframes tapFlash {
+      to { transform: scale(3); opacity: 0; }
+    }
+
+    .subpanel-transition {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans overflow-hidden bg-dark-bg text-slate-100 antialiased select-none ipad-viewport">
+
+  <header id="app-header" class="h-14 bg-dark-surface/90 backdrop-blur-xl border-b border-dark-border px-3 sm:px-5 flex items-center justify-between z-40 shrink-0 transition-transform duration-300">
+    <div class="flex items-center space-x-3">
+      <!-- Sidebar Drawer Toggle -->
+      <button id="btn-toggle-sidebar" class="p-2 rounded-xl hover:bg-dark-hover text-slate-300 hover:text-white transition active:scale-95" title="Page Thumbnails (S)">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+      </button>
+
+      <!-- App Logo -->
+      <div class="flex items-center space-x-2.5 cursor-pointer" id="logo-home">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-brand-amber flex items-center justify-center font-comic text-xl text-white shadow-lg shadow-brand-600/30">P</div>
+        <div class="flex flex-col">
+          <span class="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent leading-none">PanelPulse</span>
+          <span class="text-[9px] font-semibold text-brand-amber tracking-wider uppercase leading-none mt-0.5">Guided PDF Reader</span>
+        </div>
+      </div>
+      <span id="doc-title" class="text-xs text-slate-400 max-w-[120px] sm:max-w-xs truncate border-l border-dark-border pl-3 ml-1 hidden md:inline">Sample Comic Loaded</span>
+    </div>
+
+    <!-- Split Mode Center Toolbar -->
+    <div class="flex items-center space-x-1 bg-dark-bg p-1 rounded-xl border border-dark-border">
+      <button id="btn-mode-2half" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 bg-brand-amber text-slate-950 font-bold shadow" title="Split into Top & Bottom Halves">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+        <span>2 Halves</span>
+      </button>
+
+      <button id="btn-mode-3tier" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5" title="Split into 3 Tiers">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <span class="hidden sm:inline">3 Tiers</span>
+      </button>
+
+      <button id="btn-mode-grid" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5" title="2x2 Grid (4 Quadrants)">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+        <span class="hidden sm:inline">2x2 Grid</span>
+      </button>
+
+      <button id="btn-mode-full" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5" title="Full Page Mode">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        <span class="hidden sm:inline">Full Page</span>
+      </button>
+    </div>
+
+    <!-- Right Header Controls -->
+    <div class="flex items-center space-x-2">
+      <!-- File Selector Button -->
+      <label class="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition cursor-pointer flex items-center space-x-1.5 shadow-md shadow-brand-600/20 active:scale-95">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        <span class="hidden sm:inline">Open PDF</span>
+        <input type="file" id="pdf-input-header" accept="application/pdf,.pdf" class="hidden">
+      </label>
+
+      <!-- Settings Dropdown Toggle -->
+      <button id="btn-open-settings" class="p-2 rounded-xl bg-dark-card hover:bg-dark-hover text-slate-300 hover:text-white border border-dark-border transition" title="Reading & Filter Settings">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 010 4m-6 8a2 2 0 100-4m0 4a2 2 0 010-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 010-4m0 4v2m0-6V4"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 relative flex overflow-hidden bg-[#050608]">
+    <!-- Drag and Drop Overlay -->
+    <div id="drag-drop-zone" class="absolute inset-0 z-30 bg-brand-600/90 backdrop-blur-md hidden flex-col items-center justify-center text-white border-4 border-dashed border-white/50 m-4 rounded-3xl transition-all">
+      <svg class="w-16 h-16 mb-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+      <p class="text-2xl font-bold font-comic tracking-wide">Drop PDF Comic Here</p>
+      <p class="text-sm opacity-80 mt-1">Ready to slice into Guided Panels</p>
+    </div>
+
+    <!-- Thumbnail Sidebar -->
+    <aside id="sidebar-drawer" class="absolute top-0 bottom-0 left-0 w-64 bg-dark-surface/95 backdrop-blur-2xl border-r border-dark-border z-30 transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+      <div class="p-3 border-b border-dark-border flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Page Gallery</span>
+        <button id="btn-close-sidebar" class="p-1 rounded-lg hover:bg-dark-hover text-slate-400 hover:text-white">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="thumbnail-container" class="flex-1 overflow-y-auto p-3 space-y-3">
+        <!-- Dynamic Thumbnail Cards Rendered Here -->
+      </div>
+    </aside>
+
+    <!-- Main Interactive Reader Screen -->
+    <div id="reader-viewport" class="relative flex-1 flex items-center justify-center p-2 sm:p-4 overflow-hidden touch-none">
+      
+      <!-- Loading Indicator -->
+      <div id="loading-spinner" class="absolute z-20 flex flex-col items-center justify-center p-6 bg-dark-surface/90 backdrop-blur-xl rounded-2xl border border-dark-border shadow-2xl hidden">
+        <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p class="text-sm font-semibold text-slate-200" id="loading-text">Rendering PDF Page...</p>
+      </div>
+
+      <!-- Comic Page Canvas Stage -->
+      <div id="canvas-wrapper" class="relative max-w-full max-h-full flex items-center justify-center subpanel-transition shadow-2xl rounded-xl overflow-hidden border border-white/5 bg-black">
+        <canvas id="main-canvas" class="block max-w-full max-h-full object-contain"></canvas>
+      </div>
+
+      <!-- Touch Tap Zones (iPad Navigation Overlay) -->
+      <div class="absolute inset-0 z-10 flex pointer-events-auto">
+        <!-- Left Zone (Previous) -->
+        <div id="tap-zone-left" class="w-1/4 h-full cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.06] transition-colors" title="Previous Section / Page"></div>
+        
+        <!-- Center Zone (Toggle Controls HUD) -->
+        <div id="tap-zone-center" class="w-1/2 h-full cursor-pointer hover:bg-white/[0.01]" title="Toggle Menu Bar"></div>
+        
+        <!-- Right Zone (Next) -->
+        <div id="tap-zone-right" class="w-1/4 h-full cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.06] transition-colors" title="Next Section / Page"></div>
+      </div>
+    </div>
+
+    <!-- Floating Bottom Navigation HUD -->
+    <div id="app-footer" class="absolute bottom-4 left-0 right-0 z-20 flex justify-center items-center px-4 pointer-events-none transition-transform duration-300">
+      <div class="glass-pill px-4 py-2.5 rounded-2xl shadow-2xl flex items-center space-x-3 sm:space-x-4 pointer-events-auto border border-white/10">
+        
+        <!-- Previous Button -->
+        <button id="btn-prev" class="p-2 rounded-xl bg-dark-card hover:bg-dark-hover active:scale-90 text-slate-200 hover:text-white transition shadow border border-dark-border" title="Previous (Left Arrow / Swipe Right)">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+
+        <!-- Dynamic Status Pill -->
+        <div class="flex flex-col items-center justify-center min-w-[130px] sm:min-w-[170px]">
+          <span id="hud-status" class="text-xs sm:text-sm font-bold text-slate-100 tracking-tight">Page 1 • Top Half</span>
+          <div class="w-full bg-slate-800 h-1 rounded-full mt-1 overflow-hidden">
+            <div id="hud-progress-bar" class="bg-gradient-to-r from-brand-500 to-brand-amber h-full w-1/2 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- Next Button -->
+        <button id="btn-next" class="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 active:scale-90 text-white transition shadow-lg shadow-brand-600/30 border border-brand-400/30" title="Next (Right Arrow / Space / Swipe Left)">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+        </button>
+
+        <div class="h-5 w-[1px] bg-dark-border hidden sm:block"></div>
+
+        <!-- Extra Zoom Mode Toggle -->
+        <button id="btn-zoom-toggle" class="p-2 rounded-xl bg-dark-card hover:bg-dark-hover text-slate-300 hover:text-white transition border border-dark-border hidden sm:flex" title="Toggle Focus Zoom">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"/></svg>
+        </button>
+
+        <!-- Fullscreen Toggle -->
+        <button id="btn-fullscreen" class="p-2 rounded-xl bg-dark-card hover:bg-dark-hover text-slate-300 hover:text-white transition border border-dark-border hidden sm:flex" title="Toggle Fullscreen">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Reading Settings & Image Filters Modal -->
+  <div id="settings-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl p-5 shadow-2xl border border-white/10 space-y-5">
+      
+      <div class="flex items-center justify-between border-b border-dark-border pb-3">
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-brand-amber" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 010 4m-6 8a2 2 0 100-4m0 4a2 2 0 010-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 010-4m0 4v2m0-6V4"/></svg>
+          <h3 class="font-bold text-slate-100 text-base">Guided Reader Settings</h3>
+        </div>
+        <button id="btn-close-settings" class="p-1 rounded-lg hover:bg-dark-hover text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Split Overlap Control -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between text-xs font-semibold">
+          <span class="text-slate-300">Half-Page Split Overlap</span>
+          <span id="lbl-overlap" class="text-brand-amber font-mono">6%</span>
+        </div>
+        <input type="range" id="input-overlap" min="0" max="15" step="1" value="6" class="w-full accent-brand-500 bg-dark-bg h-2 rounded-lg cursor-pointer">
+        <p class="text-[11px] text-slate-400">Adds overlap between top and bottom halves to preserve comic panel context.</p>
+      </div>
+
+      <!-- Reading Direction -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-semibold text-slate-300">Reading Direction</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-dir-ltr" class="py-2 px-3 rounded-xl border text-xs font-bold transition bg-brand-600 text-white border-brand-500">Western (Left-to-Right)</button>
+          <button id="btn-dir-rtl" class="py-2 px-3 rounded-xl border border-dark-border text-xs font-semibold text-slate-400 hover:bg-dark-hover hover:text-white">Manga (Right-to-Left)</button>
+        </div>
+      </div>
+
+      <!-- Image Filters -->
+      <div class="space-y-3 pt-2 border-t border-dark-border">
+        <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Comic Image Enhancements</span>
+        
+        <!-- Brightness -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Brightness</span>
+            <span id="lbl-brightness" class="text-brand-400 font-mono">100%</span>
+          </div>
+          <input type="range" id="input-brightness" min="70" max="150" value="100" class="w-full accent-brand-500 bg-dark-bg h-1.5 rounded-lg">
+        </div>
+
+        <!-- Contrast -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Contrast</span>
+            <span id="lbl-contrast" class="text-brand-400 font-mono">100%</span>
+          </div>
+          <input type="range" id="input-contrast" min="70" max="160" value="100" class="w-full accent-brand-500 bg-dark-bg h-1.5 rounded-lg">
+        </div>
+
+        <!-- Vintage Sepia -->
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-300">Vintage Sepia Warmth</span>
+            <span id="lbl-sepia" class="text-brand-400 font-mono">0%</span>
+          </div>
+          <input type="range" id="input-sepia" min="0" max="80" value="0" class="w-full accent-brand-500 bg-dark-bg h-1.5 rounded-lg">
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-between items-center pt-2">
+        <button id="btn-reset-filters" class="text-xs text-slate-400 hover:text-brand-amber underline">Reset Filters</button>
+        <button id="btn-save-settings" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl transition shadow-md shadow-brand-600/20">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Initialize PDF.js worker setup */
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // Application State Engine
+    const state = {
+      pdfDoc: null,
+      pdfFileName: "Sample Comic Page",
+      totalPages: 3,
+      currentPage: 1,      // 1-based index
+      currentSubPanel: 0,  // 0-based index within page
+      splitMode: '2half',  // '2half' | '3tier' | 'grid' | 'full'
+      readingDirection: 'ltr', // 'ltr' | 'rtl'
+      overlapPercent: 6,   // percentage overlap between splits
+      zoomLevel: 1.0,      // standard view zoom
+      uiVisible: true,
+      sidebarOpen: false,
+      isDemoMode: true,
+      
+      // Image filters
+      brightness: 100,
+      contrast: 100,
+      sepia: 0,
+
+      // Cache offscreen canvases for crisp rendering
+      renderedPageCache: new Map()
+    };
+
+    // DOM Elements
+    const elements = {
+      pdfInputHeader: document.getElementById('pdf-input-header'),
+      dragDropZone: document.getElementById('drag-drop-zone'),
+      mainCanvas: document.getElementById('main-canvas'),
+      canvasWrapper: document.getElementById('canvas-wrapper'),
+      readerViewport: document.getElementById('reader-viewport'),
+      loadingSpinner: document.getElementById('loading-spinner'),
+      loadingText: document.getElementById('loading-text'),
+      docTitle: document.getElementById('doc-title'),
+      hudStatus: document.getElementById('hud-status'),
+      hudProgressBar: document.getElementById('hud-progress-bar'),
+      
+      // Buttons
+      btnPrev: document.getElementById('btn-prev'),
+      btnNext: document.getElementById('btn-next'),
+      btnMode2Half: document.getElementById('btn-mode-2half'),
+      btnMode3Tier: document.getElementById('btn-mode-3tier'),
+      btnModeGrid: document.getElementById('btn-mode-grid'),
+      btnModeFull: document.getElementById('btn-mode-full'),
+      btnToggleSidebar: document.getElementById('btn-toggle-sidebar'),
+      btnCloseSidebar: document.getElementById('btn-close-sidebar'),
+      sidebarDrawer: document.getElementById('sidebar-drawer'),
+      thumbnailContainer: document.getElementById('thumbnail-container'),
+      btnZoomToggle: document.getElementById('btn-zoom-toggle'),
+      btnFullscreen: document.getElementById('btn-fullscreen'),
+      
+      // Settings Modal
+      btnOpenSettings: document.getElementById('btn-open-settings'),
+      btnCloseSettings: document.getElementById('btn-close-settings'),
+      btnSaveSettings: document.getElementById('btn-save-settings'),
+      settingsModal: document.getElementById('settings-modal'),
+      inputOverlap: document.getElementById('input-overlap'),
+      lblOverlap: document.getElementById('lbl-overlap'),
+      btnDirLtr: document.getElementById('btn-dir-ltr'),
+      btnDirRtl: document.getElementById('btn-dir-rtl'),
+      inputBrightness: document.getElementById('input-brightness'),
+      lblBrightness: document.getElementById('lbl-brightness'),
+      inputContrast: document.getElementById('input-contrast'),
+      lblContrast: document.getElementById('lbl-contrast'),
+      inputSepia: document.getElementById('input-sepia'),
+      lblSepia: document.getElementById('lbl-sepia'),
+      btnResetFilters: document.getElementById('btn-reset-filters'),
+
+      // UI HUD headers
+      appHeader: document.getElementById('app-header'),
+      appFooter: document.getElementById('app-footer'),
+
+      // Tap Zones
+      tapLeft: document.getElementById('tap-zone-left'),
+      tapCenter: document.getElementById('tap-zone-center'),
+      tapRight: document.getElementById('tap-zone-right')
+    };
+
+    // Calculates fractional bounding boxes for different split modes
+    function getSubPanelBoxes(mode, overlapPct) {
+      const overlap = overlapPct / 100;
+
+      if (mode === '2half') {
+        // Top Half & Bottom Half with overlap
+        return [
+          { name: "Top Half", y: 0, height: 0.50 + overlap },
+          { name: "Bottom Half", y: 0.50 - overlap, height: 0.50 + overlap }
+        ];
+      } else if (mode === '3tier') {
+        // 3 Vertical Tiers
+        return [
+          { name: "Top Tier", y: 0, height: 0.35 + overlap },
+          { name: "Middle Tier", y: 0.33 - (overlap / 2), height: 0.35 + overlap },
+          { name: "Bottom Tier", y: 0.65 - overlap, height: 0.35 + overlap }
+        ];
+      } else if (mode === 'grid') {
+        // 2x2 Quadrants
+        const isRtl = state.readingDirection === 'rtl';
+        return [
+          { name: isRtl ? "Top-Right" : "Top-Left", x: isRtl ? 0.5 - overlap : 0, y: 0, width: 0.5 + overlap, height: 0.5 + overlap },
+          { name: isRtl ? "Top-Left" : "Top-Right", x: isRtl ? 0 : 0.5 - overlap, y: 0, width: 0.5 + overlap, height: 0.5 + overlap },
+          { name: isRtl ? "Bottom-Right" : "Bottom-Left", x: isRtl ? 0.5 - overlap : 0, y: 0.5 - overlap, width: 0.5 + overlap, height: 0.5 + overlap },
+          { name: isRtl ? "Bottom-Left" : "Bottom-Right", x: isRtl ? 0 : 0.5 - overlap, y: 0.5 - overlap, width: 0.5 + overlap, height: 0.5 + overlap }
+        ];
+      } else {
+        // Full Page
+        return [
+          { name: "Full Page", y: 0, height: 1.0, x: 0, width: 1.0 }
+        ];
+      }
+    }
+
+    // Generates high-quality mock comic pages when no PDF is uploaded
+    function generateDemoComicCanvas(pageNumber) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 1800;
+      const ctx = canvas.getContext('2d');
+
+      // Background Page Paper Tone
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Outer Margin Border
+      ctx.strokeStyle = "#1a1a2e";
+      ctx.lineWidth = 12;
+      ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+
+      const isPage1 = pageNumber === 1;
+      const isPage2 = pageNumber === 2;
+
+      if (isPage1) {
+        // Page 1: Title Banner + 6 Panels Layout
+        ctx.fillStyle = "#4f46e5";
+        ctx.fillRect(50, 50, canvas.width - 100, 180);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 72px Bangers, cursive";
+        ctx.textAlign = "center";
+        ctx.fillText("CYBER PULSE #1", canvas.width / 2, 140);
+        ctx.font = "bold 24px Inter, sans-serif";
+        ctx.fillText("ISSUE 1 • PAGE 1 - NEON CITY NIGHTS", canvas.width / 2, 190);
+
+        // --- TOP HALF PANELS (Panels 1, 2, 3) ---
+        drawPanelBox(ctx, 50, 260, 530, 320, "#0f172a", "PANEL 1", "The rainy streets of Neo-Tokyo glowed under holograms...", "#38bdf8");
+        drawPanelBox(ctx, 620, 260, 530, 320, "#1e1b4b", "PANEL 2", "Kaito adjusted his cybernetic optic visors.", "#a855f7");
+        drawPanelBox(ctx, 50, 610, 1100, 260, "#312e81", "PANEL 3 (WIDE)", "'Signal confirmed. The core is located inside Tier 4.'", "#6366f1");
+
+        // --- BOTTOM HALF PANELS (Panels 4, 5, 6) ---
+        drawPanelBox(ctx, 50, 910, 530, 400, "#064e3b", "PANEL 4", "SWOOSH! Sparks erupted from the server vault door!", "#10b981");
+        drawPanelBox(ctx, 620, 910, 530, 400, "#7c2d12", "PANEL 5", "'Infiltration team, deploy defensive shields now!'", "#f97316");
+        drawPanelBox(ctx, 50, 1340, 1100, 390, "#881337", "PANEL 6 (BOTTOM SPLASH)", "TO BE CONTINUED ON NEXT PAGE...", "#f43f5e");
+
+      } else if (isPage2) {
+        // Page 2: Action sequence
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(50, 50, canvas.width - 100, 80);
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 32px Bangers, cursive";
+        ctx.textAlign = "center";
+        ctx.fillText("CHAPTER 2: BREAKOUT SEQUENCE", canvas.width / 2, 105);
+
+        // Top Half
+        drawPanelBox(ctx, 50, 150, 1100, 380, "#451a03", "PANEL 1 (TOP PANORAMA)", "BOOM! Security automated turrets locked onto the target!", "#f59e0b");
+        drawPanelBox(ctx, 50, 550, 530, 350, "#14532d", "PANEL 2", "Maya hacked the encryption override frequency.", "#22c55e");
+        drawPanelBox(ctx, 620, 550, 530, 350, "#581c87", "PANEL 3", "'Override complete in 3... 2... 1!'", "#c084fc");
+
+        // Bottom Half
+        drawPanelBox(ctx, 50, 920, 1100, 420, "#1e3a8a", "PANEL 4 (CENTRAL CLIMAX)", "The blast doors slid open revealing the AI Core artifact!", "#60a5fa");
+        drawPanelBox(ctx, 50, 1360, 530, 370, "#701a75", "PANEL 5", "'Grab the data drive and retreat!'", "#e879f9");
+        drawPanelBox(ctx, 620, 1360, 530, 370, "#365314", "PANEL 6", "Escaping into the shadows of the subterranean subway...", "#84cc16");
+
+      } else {
+        // Page 3: Final splash page
+        drawPanelBox(ctx, 50, 50, 1100, 800, "#0284c7", "TOP HALF SPLASH", "A majestic panoramic view of the floating Sky-Spire Metropolis at dawn.", "#e0f2fe");
+        drawPanelBox(ctx, 50, 870, 1100, 880, "#4f46e5", "BOTTOM HALF SPLASH", "END OF DEMO CHAPTER • LOAD YOUR OWN PDF COMIC TO TEST!", "#e0e7ff");
+      }
+
+      return canvas;
+    }
+
+    // Helper to draw sample panels
+    function drawPanelBox(ctx, x, y, w, h, bg, label, quote, accent) {
+      ctx.fillStyle = bg;
+      ctx.fillRect(x, y, w, h);
+
+      // Panel Frame Line
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(x, y, w, h);
+
+      // Label Header
+      ctx.fillStyle = accent;
+      ctx.fillRect(x + 15, y + 15, 180, 40);
+      ctx.fillStyle = "#000000";
+      ctx.font = "bold 20px Inter, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(label, x + 25, y + 42);
+
+      // Speech bubble text
+      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+      ctx.fillRect(x + 25, y + h - 80, w - 50, 60);
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "italic 18px Inter, sans-serif";
+      ctx.fillText(quote, x + 40, y + h - 42);
+    }
+
+    async function loadPageCanvas(pageNumber) {
+      if (state.renderedPageCache.has(pageNumber)) {
+        return state.renderedPageCache.get(pageNumber);
+      }
+
+      showLoading(true, `Rendering Page ${pageNumber}...`);
+
+      if (state.isDemoMode) {
+        const demoCanvas = generateDemoComicCanvas(pageNumber);
+        state.renderedPageCache.set(pageNumber, demoCanvas);
+        showLoading(false);
+        return demoCanvas;
+      }
+
+      try {
+        const page = await state.pdfDoc.getPage(pageNumber);
+        
+        // High resolution viewport rendering for iPad Retina displays
+        const pixelRatio = window.devicePixelRatio || 1.5;
+        const viewport = page.getViewport({ scale: 2.0 * Math.min(pixelRatio, 2) });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.viewport || viewport.height;
+        const ctx = canvas.getContext('2d');
+
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+
+        await page.render(renderContext).promise;
+        state.renderedPageCache.set(pageNumber, canvas);
+        showLoading(false);
+        return canvas;
+      } catch (err) {
+        console.error("PDF Page Render Error:", err);
+        showLoading(false);
+        showToast("Error rendering PDF page");
+        return null;
+      }
+    }
+
+    async function renderCurrentView() {
+      const sourceCanvas = await loadPageCanvas(state.currentPage);
+      if (!sourceCanvas) return;
+
+      const subPanels = getSubPanelBoxes(state.splitMode, state.overlapPercent);
+      if (state.currentSubPanel >= subPanels.length) {
+        state.currentSubPanel = subPanels.length - 1;
+      }
+
+      const activeBox = subPanels[state.currentSubPanel];
+
+      // Calculate slice coordinates from full source page canvas
+      const cropX = (activeBox.x || 0) * sourceCanvas.width;
+      const cropY = (activeBox.y || 0) * sourceCanvas.height;
+      const cropW = (activeBox.width || 1.0) * sourceCanvas.width;
+      const cropH = (activeBox.height || 1.0) * sourceCanvas.height;
+
+      // Set destination target canvas dimensions
+      elements.mainCanvas.width = cropW;
+      elements.mainCanvas.height = cropH;
+
+      const ctx = elements.mainCanvas.getContext('2d');
+      ctx.clearRect(0, 0, cropW, cropH);
+
+      // Draw cropped section onto display canvas
+      ctx.drawImage(
+        sourceCanvas,
+        cropX, cropY, cropW, cropH,
+        0, 0, cropW, cropH
+      );
+
+      // Apply comic filter styling
+      elements.mainCanvas.style.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) sepia(${state.sepia}%)`;
+
+      // Apply zoom mode scale transforms
+      if (state.zoomLevel > 1.0) {
+        elements.canvasWrapper.style.transform = `scale(${state.zoomLevel})`;
+      } else {
+        elements.canvasWrapper.style.transform = `scale(1.0)`;
+      }
+
+      updateHUDStatus(activeBox.name, subPanels.length);
+    }
+
+    function navigateNext() {
+      const subPanels = getSubPanelBoxes(state.splitMode, state.overlapPercent);
+      
+      if (state.currentSubPanel < subPanels.length - 1) {
+        state.currentSubPanel++;
+        renderCurrentView();
+      } else if (state.currentPage < state.totalPages) {
+        state.currentPage++;
+        state.currentSubPanel = 0;
+        renderCurrentView();
+        updateThumbnailHighlights();
+      } else {
+        showToast("Reached end of comic");
+      }
+    }
+
+    function navigatePrev() {
+      if (state.currentSubPanel > 0) {
+        state.currentSubPanel--;
+        renderCurrentView();
+      } else if (state.currentPage > 1) {
+        state.currentPage--;
+        const prevPanels = getSubPanelBoxes(state.splitMode, state.overlapPercent);
+        state.currentSubPanel = prevPanels.length - 1;
+        renderCurrentView();
+        updateThumbnailHighlights();
+      } else {
+        showToast("First page");
+      }
+    }
+
+    function setSplitMode(mode) {
+      state.splitMode = mode;
+      state.currentSubPanel = 0;
+
+      // Update button styling states
+      elements.btnMode2Half.className = mode === '2half' ? "px-3 py-1.5 rounded-lg text-xs transition flex items-center space-x-1.5 bg-brand-amber text-slate-950 font-bold shadow" : "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5";
+      elements.btnMode3Tier.className = mode === '3tier' ? "px-3 py-1.5 rounded-lg text-xs transition flex items-center space-x-1.5 bg-brand-amber text-slate-950 font-bold shadow" : "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5";
+      elements.btnModeGrid.className = mode === 'grid' ? "px-3 py-1.5 rounded-lg text-xs transition flex items-center space-x-1.5 bg-brand-amber text-slate-950 font-bold shadow" : "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5";
+      elements.btnModeFull.className = mode === 'full' ? "px-3 py-1.5 rounded-lg text-xs transition flex items-center space-x-1.5 bg-brand-amber text-slate-950 font-bold shadow" : "px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5";
+
+      renderCurrentView();
+    }
+
+    function updateHUDStatus(sectionName, totalSections) {
+      elements.hudStatus.textContent = `Page ${state.currentPage} of ${state.totalPages} • ${sectionName}`;
+      
+      // Calculate overall progress percentage
+      const totalSteps = state.totalPages * totalSections;
+      const currentStep = ((state.currentPage - 1) * totalSections) + (state.currentSubPanel + 1);
+      const pct = Math.round((currentStep / totalSteps) * 100);
+      elements.hudProgressBar.style.width = `${pct}%`;
+    }
+
+    function loadPdfFile(file) {
+      if (!file || file.type !== 'application/pdf') {
+        showToast("Please select a valid PDF comic file");
+        return;
+      }
+
+      showLoading(true, "Opening PDF Comic File...");
+      state.pdfFileName = file.name;
+      elements.docTitle.textContent = file.name;
+
+      const reader = new FileReader();
+      reader.onload = async function (e) {
+        try {
+          const typedArray = new Uint8Array(e.target.result);
+          state.pdfDoc = await pdfjsLib.getDocument({ data: typedArray }).promise;
+          state.totalPages = state.pdfDoc.numPages;
+          state.currentPage = 1;
+          state.currentSubPanel = 0;
+          state.isDemoMode = false;
+          state.renderedPageCache.clear();
+
+          renderThumbnails();
+          renderCurrentView();
+          showToast(`Loaded ${file.name} (${state.totalPages} Pages)`);
+        } catch (err) {
+          console.error("Error loading PDF:", err);
+          showToast("Failed to load PDF file");
+          showLoading(false);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function renderThumbnails() {
+      elements.thumbnailContainer.innerHTML = '';
+      
+      for (let p = 1; p <= state.totalPages; p++) {
+        const thumbCard = document.createElement('div');
+        thumbCard.className = `p-2 rounded-xl cursor-pointer border transition flex flex-col items-center space-y-1 ${p === state.currentPage ? 'bg-brand-600/20 border-brand-500' : 'bg-dark-card border-dark-border hover:border-slate-500'}`;
+        thumbCard.dataset.page = p;
+
+        const thumbCanvas = document.createElement('canvas');
+        thumbCanvas.className = "w-full h-32 object-contain rounded bg-black";
+
+        const label = document.createElement('span');
+        label.className = "text-[11px] font-semibold text-slate-300";
+        label.textContent = `Page ${p}`;
+
+        thumbCard.appendChild(thumbCanvas);
+        thumbCard.appendChild(label);
+        
+        thumbCard.addEventListener('click', () => {
+          state.currentPage = p;
+          state.currentSubPanel = 0;
+          renderCurrentView();
+          updateThumbnailHighlights();
+          toggleSidebar(false);
+        });
+
+        elements.thumbnailContainer.appendChild(thumbCard);
+
+        // Render low-res preview onto thumbnail canvas
+        loadPageCanvas(p).then(source => {
+          if (source) {
+            thumbCanvas.width = source.width / 4;
+            thumbCanvas.height = source.height / 4;
+            const ctx = thumbCanvas.getContext('2d');
+            ctx.drawImage(source, 0, 0, thumbCanvas.width, thumbCanvas.height);
+          }
+        });
+      }
+    }
+
+    function updateThumbnailHighlights() {
+      const cards = elements.thumbnailContainer.querySelectorAll('div[data-page]');
+      cards.forEach(card => {
+        const pageNum = parseInt(card.dataset.page, 10);
+        if (pageNum === state.currentPage) {
+          card.className = "p-2 rounded-xl cursor-pointer border transition flex flex-col items-center space-y-1 bg-brand-600/20 border-brand-500";
+        } else {
+          card.className = "p-2 rounded-xl cursor-pointer border transition flex flex-col items-center space-y-1 bg-dark-card border-dark-border hover:border-slate-500";
+        }
+      });
+    }
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    function setupTouchEvents() {
+      elements.readerViewport.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      elements.readerViewport.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+
+        // Horizontal swipe detection (> 50px threshold)
+        if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 100) {
+          if (deltaX < 0) {
+            // Swipe Left -> Next
+            navigateNext();
+          } else {
+            // Swipe Right -> Prev
+            navigatePrev();
+          }
+        }
+      }, { passive: true });
+
+      // Tap Zone Handlers
+      elements.tapLeft.addEventListener('click', (e) => {
+        createTapRipple(e);
+        navigatePrev();
+      });
+
+      elements.tapRight.addEventListener('click', (e) => {
+        createTapRipple(e);
+        navigateNext();
+      });
+
+      elements.tapCenter.addEventListener('click', () => {
+        toggleUIHUD();
+      });
+    }
+
+    function createTapRipple(e) {
+      const flash = document.createElement('div');
+      flash.className = 'touch-tap-flash';
+      flash.style.left = `${e.clientX - 25}px`;
+      flash.style.top = `${e.clientY - 25}px`;
+      flash.style.width = '50px';
+      flash.style.height = '50px';
+      document.body.appendChild(flash);
+      setTimeout(() => flash.remove(), 400);
+    }
+
+    function toggleUIHUD(show = null) {
+      state.uiVisible = show !== null ? show : !state.uiVisible;
+      if (state.uiVisible) {
+        elements.appHeader.classList.remove('-translate-y-full');
+        elements.appFooter.classList.remove('translate-y-24');
+      } else {
+        elements.appHeader.classList.add('-translate-y-full');
+        elements.appFooter.classList.add('translate-y-24');
+      }
+    }
+
+    function toggleSidebar(show = null) {
+      state.sidebarOpen = show !== null ? show : !state.sidebarOpen;
+      if (state.sidebarOpen) {
+        elements.sidebarDrawer.classList.remove('-translate-x-full');
+      } else {
+        elements.sidebarDrawer.classList.add('-translate-x-full');
+      }
+    }
+
+    function showLoading(show, text = "Loading...") {
+      elements.loadingText.textContent = text;
+      if (show) {
+        elements.loadingSpinner.classList.remove('hidden');
+      } else {
+        elements.loadingSpinner.classList.add('hidden');
+      }
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-16 left-1/2 transform -translate-x-1/2 z-50 glass-pill px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-2xl border border-white/20 animate-fade-in';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 2200);
+    }
+
+    function setupDragAndDrop() {
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        elements.dragDropZone.classList.remove('hidden');
+        elements.dragDropZone.classList.add('flex');
+      });
+
+      elements.dragDropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        elements.dragDropZone.classList.add('hidden');
+        elements.dragDropZone.classList.remove('flex');
+      });
+
+      elements.dragDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        elements.dragDropZone.classList.add('hidden');
+        elements.dragDropZone.classList.remove('flex');
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          loadPdfFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    function initEvents() {
+      // PDF File Pickers
+      elements.pdfInputHeader.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) loadPdfFile(e.target.files[0]);
+      });
+
+      // Split Mode Buttons
+      elements.btnMode2Half.addEventListener('click', () => setSplitMode('2half'));
+      elements.btnMode3Tier.addEventListener('click', () => setSplitMode('3tier'));
+      elements.btnModeGrid.addEventListener('click', () => setSplitMode('grid'));
+      elements.btnModeFull.addEventListener('click', () => setSplitMode('full'));
+
+      // Prev / Next Buttons
+      elements.btnPrev.addEventListener('click', navigatePrev);
+      elements.btnNext.addEventListener('click', navigateNext);
+
+      // Sidebar Controls
+      elements.btnToggleSidebar.addEventListener('click', () => toggleSidebar());
+      elements.btnCloseSidebar.addEventListener('click', () => toggleSidebar(false));
+
+      // Zoom Toggle
+      elements.btnZoomToggle.addEventListener('click', () => {
+        state.zoomLevel = state.zoomLevel === 1.0 ? 1.25 : 1.0;
+        renderCurrentView();
+        showToast(state.zoomLevel > 1.0 ? "Focus Zoom 1.25x" : "Fit Zoom");
+      });
+
+      // Fullscreen Toggle
+      elements.btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+
+      // Modal Settings Controls
+      elements.btnOpenSettings.addEventListener('click', () => elements.settingsModal.classList.remove('hidden'));
+      elements.btnCloseSettings.addEventListener('click', () => elements.settingsModal.classList.add('hidden'));
+      elements.btnSaveSettings.addEventListener('click', () => {
+        elements.settingsModal.classList.add('hidden');
+        renderCurrentView();
+      });
+
+      elements.inputOverlap.addEventListener('input', (e) => {
+        state.overlapPercent = parseInt(e.target.value, 10);
+        elements.lblOverlap.textContent = `${state.overlapPercent}%`;
+      });
+
+      elements.btnDirLtr.addEventListener('click', () => {
+        state.readingDirection = 'ltr';
+        elements.btnDirLtr.className = "py-2 px-3 rounded-xl border text-xs font-bold transition bg-brand-600 text-white border-brand-500";
+        elements.btnDirRtl.className = "py-2 px-3 rounded-xl border border-dark-border text-xs font-semibold text-slate-400 hover:bg-dark-hover hover:text-white";
+        renderCurrentView();
+      });
+
+      elements.btnDirRtl.addEventListener('click', () => {
+        state.readingDirection = 'rtl';
+        elements.btnDirRtl.className = "py-2 px-3 rounded-xl border text-xs font-bold transition bg-brand-600 text-white border-brand-500";
+        elements.btnDirLtr.className = "py-2 px-3 rounded-xl border border-dark-border text-xs font-semibold text-slate-400 hover:bg-dark-hover hover:text-white";
+        renderCurrentView();
+      });
+
+      // Image Filter Sliders
+      elements.inputBrightness.addEventListener('input', (e) => {
+        state.brightness = e.target.value;
+        elements.lblBrightness.textContent = `${state.brightness}%`;
+        renderCurrentView();
+      });
+
+      elements.inputContrast.addEventListener('input', (e) => {
+        state.contrast = e.target.value;
+        elements.lblContrast.textContent = `${state.contrast}%`;
+        renderCurrentView();
+      });
+
+      elements.inputSepia.addEventListener('input', (e) => {
+        state.sepia = e.target.value;
+        elements.lblSepia.textContent = `${state.sepia}%`;
+        renderCurrentView();
+      });
+
+      elements.btnResetFilters.addEventListener('click', () => {
+        state.brightness = 100;
+        state.contrast = 100;
+        state.sepia = 0;
+        elements.inputBrightness.value = 100;
+        elements.inputContrast.value = 100;
+        elements.inputSepia.value = 0;
+        elements.lblBrightness.textContent = "100%";
+        elements.lblContrast.textContent = "100%";
+        elements.lblSepia.textContent = "0%";
+        renderCurrentView();
+      });
+
+      // Keyboard Shortcuts
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+          e.preventDefault();
+          navigateNext();
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault();
+          navigatePrev();
+        } else if (e.key === 'f' || e.key === 'F') {
+          setSplitMode('full');
+        } else if (e.key === 's' || e.key === 'S') {
+          toggleSidebar();
+        } else if (e.key === 'm' || e.key === 'M') {
+          toggleUIHUD();
+        }
+      });
+
+      // Responsive Resize
+      window.addEventListener('resize', () => {
+        renderCurrentView();
+      });
+    }
+
+    window.onload = function () {
+      initEvents();
+      setupTouchEvents();
+      setupDragAndDrop();
+
+      // Render initial sample comic demo
+      renderThumbnails();
+      renderCurrentView();
+    };
+  </script>
+</body>
+</html>
