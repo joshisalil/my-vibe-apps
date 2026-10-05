@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Development Roadmap</title>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --card-bg: #ffffff;
+            --border: #cbd5e1;
+            --active-bg: #eff6ff;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem 0;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* Mobile-First Grid for Tabs */
+        .tabs-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 600px) {
+            .tabs-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 900px) {
+            .tabs-container {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .tab-card {
+            background-color: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tab-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .tab-card.active {
+            border-color: var(--primary);
+            background-color: var(--active-bg);
+        }
+
+        .tab-level {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .tab-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        /* Content Panel */
+        .content-panel {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .content-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .content-panel p.desc {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
+        }
+
+        .section-header {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 1.5rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .resource-list, .exercise-list {
+            list-style: none;
+        }
+
+        .resource-item, .exercise-item {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .resource-item strong {
+            display: block;
+            font-size: 1.05rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Agent Architecture & Vibe Coding</h1>
+        <p class="subtitle">Personal Productivity to Ambient Enterprise Workflows</p>
+    </header>
+    
+    <div class="tabs-container" id="tabs-container">
+        <!-- Injected via JS -->
+    </div>
+
+    <div class="content-panel" id="content-panel">
+        <!-- Injected via JS -->
+    </div>
+</div>
+
+<script>
+    const roadmap = [
+        {
+            level: "0",
+            title: "Curious",
+            subtitle: "Orientation",
+            description: "Shift from traditional coding to natural language software architecture using AI-native IDEs and terminal agents.",
+            resources: [
+                { name: "Cursor IDE Documentation", url: "https://docs.cursor.com/" },
+                { name: "Aider AI Pair Programmer", url: "https://aider.chat/" }
+            ],
+            exercises: [
+                "Install your preferred AI IDE (Cursor/Windsurf) and configure a global `.cursorrules` file establishing your architectural preferences."
+            ]
+        },
+        {
+            level: "1",
+            title: "Explorer",
+            subtitle: "Ideation",
+            description: "Master spec-driven development. Generate precise JSON schemas and layouts before generating frontend code.",
+            resources: [
+                { name: "Anthropic Prompt Engineering Guide", url: "https://docs.anthropic.com/" }
+            ],
+            exercises: [
+                "Draft the technical spec for a cafe ordering system for your daughter's home based cafe[cite: 2].",
+                "Define a menu array of objects containing categories, item names, base prices, and optional modifiers (e.g., milk options and extra shots)[cite: 2]."
+            ]
+        },
+        {
+            level: "2",
+            title: "Creator",
+            subtitle: "Content & Code",
+            description: "Execute front-end creation using modern frameworks and iterative debugging.",
+            resources: [
+                { name: "Tailwind CSS Documentation", url: "https://tailwindcss.com/docs" }
+            ],
+            exercises: [
+                "Use HTML, Tailwind CSS, and JavaScript to build the UI for the cafe application, which includes a Customer View and a Barista View[cite: 2].",
+                "Build a shopping cart drawer that displays selected items, chosen modifiers, and calculating the running total[cite: 2]."
+            ]
+        },
+        {
+            level: "3",
+            title: "Prototyper",
+            subtitle: "Test an Idea",
+            description: "Connect static interfaces to real-time, serverless backends and automate deployments.",
+            resources: [
+                { name: "Supabase JS Client Docs", url: "https://supabase.com/docs/reference/javascript" },
+                { name: "GitHub Actions Documentation", url: "https://docs.github.com/en/actions" }
+            ],
+            exercises: [
+                "Connect the application to a cloud database such as Supabase or Firebase Realtime Database for live backend integration[cite: 2].",
+                "Create a `.github/workflows/deploy.yml` file to automatically build and deploy this static application to GitHub Pages whenever changes are pushed to the main branch[cite: 2]."
+            ]
+        },
+        {
+            level: "4",
+            title: "Workflow Builder",
+            subtitle: "Prompts & Skills",
+            description: "Systematize your development by building reusable prompt libraries and custom IDE rules.",
+            resources: [
+                { name: "OpenAI Cookbook", url: "https://cookbook.openai.com/" }
+            ],
+            exercises: [
+                "Create a single, complete PROMPT.md file containing the full specifications for the cafe app so you can give it to GitHub Copilot in one go[cite: 2]."
+            ]
+        },
+        {
+            level: "5",
+            title: "Connected Automator",
+            subtitle: "MCP & Agents",
+            description: "Turn MCP and agent development into a personal productivity layer, managing your daily engineering tasks autonomously.",
+            resources: [
+                { name: "Model Context Protocol (MCP) Docs", url: "https://modelcontextprotocol.io/" },
+                { name: "GitHub MCP Server", url: "https://github.com/modelcontextprotocol/servers/tree/main/src/github" }
+            ],
+            exercises: [
+                "Connect your local IDE to a Jira and GitHub MCP server. Prompt your agent to read your assigned Jira ticket, checkout a feature branch, generate the code, and draft a pull request."
+            ]
+        },
+        {
+            level: "6",
+            title: "Ambient Architect",
+            subtitle: "Business Processes",
+            description: "Build ambient, event-driven agent layers for business processes across enterprise runtimes.",
+            resources: [
+                { name: "n8n Advanced AI Workflows", url: "https://docs.n8n.io/advanced-ai/" },
+                { name: "AWS Bedrock Agent Core", url: "https://aws.amazon.com/bedrock/agents/" }
+            ],
+            exercises: [
+                "Build an n8n or AWS-hosted agent triggered by a ServiceNow webhook. Have the agent autonomously query a Confluence MCP for compliance protocols, draft a resolution summary, and post it back to the ServiceNow incident."
+            ]
+        }
+    ];
+
+    function renderTabs() {
+        const container = document.getElementById('tabs-container');
+        container.innerHTML = '';
+        
+        roadmap.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = `tab-card ${index === 0 ? 'active' : ''}`;
+            card.onclick = () => selectTab(index);
+            
+            card.innerHTML = `
+                <div class="tab-level">Level ${item.level}</div>
+                <div class="tab-title">${item.title}</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">${item.subtitle}</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function selectTab(index) {
+        document.querySelectorAll('.tab-card').forEach((el, i) => {
+            el.classList.toggle('active', i === index);
+        });
+        
+        const data = roadmap[index];
+        const panel = document.getElementById('content-panel');
+        
+        const resourcesHTML = data.resources.map(res => `
+            <li class="resource-item">
+                <strong>${res.name}</strong>
+                <a href="${res.url}" target="_blank" class="btn">View Documentation</a>
+            </li>
+        `).join('');
+        
+        const exercisesHTML = data.exercises.map(ex => `
+            <li class="exercise-item">${ex}</li>
+        `).join('');
+        
+        panel.innerHTML = `
+            <h2>Level ${data.level}: ${data.title}</h2>
+            <p class="desc">${data.description}</p>
+            
+            <div class="section-header">📚 Training Resources</div>
+            <ul class="resource-list">${resourcesHTML}</ul>
+            
+            <div class="section-header">⚙️ Hands-On Exercises</div>
+            <ul class="exercise-list">${exercisesHTML}</ul>
+        `;
+    }
+
+    // Initialize the dashboard
+    renderTabs();
+    selectTab(0);
+</script>
+
+</body>
+</html>
