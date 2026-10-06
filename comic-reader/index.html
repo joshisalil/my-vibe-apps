@@ -67,6 +67,75 @@
       -webkit-user-select: none;
     }
 
+    body.reader-fullscreen {
+      padding: 0 !important;
+      margin: 0 !important;
+      background: #000 !important;
+    }
+
+    body.reader-fullscreen .ipad-viewport {
+      padding: 0 !important;
+      height: 100dvh !important;
+      width: 100vw !important;
+    }
+
+    body.reader-fullscreen #app-header,
+    body.reader-fullscreen #app-footer,
+    body.reader-fullscreen #sidebar-drawer {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      display: none !important;
+    }
+
+    body.reader-fullscreen #reader-viewport,
+    body.reader-fullscreen main {
+      padding: 0 !important;
+      margin: 0 !important;
+      height: 100dvh !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+      max-height: 100dvh !important;
+    }
+
+    body.reader-fullscreen #canvas-wrapper {
+      width: 100vw !important;
+      height: 100dvh !important;
+      max-width: 100vw !important;
+      max-height: 100dvh !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      overflow: visible !important;
+      background: #000 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    body.reader-fullscreen #main-canvas {
+      width: 100vw !important;
+      height: 100dvh !important;
+      max-width: 100vw !important;
+      max-height: 100dvh !important;
+      object-fit: contain !important;
+      display: block !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      background: #000 !important;
+    }
+
+    body.reader-fullscreen.reader-ui-visible #app-header,
+    body.reader-fullscreen.reader-ui-visible #app-footer,
+    body.reader-fullscreen.reader-ui-visible #sidebar-drawer {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      display: flex !important;
+    }
+
     .glass-panel {
       background: rgba(18, 20, 29, 0.88);
       backdrop-filter: blur(20px);
@@ -96,48 +165,6 @@
 
     .subpanel-transition {
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    body.reader-fullscreen #app-header,
-    body.reader-fullscreen #app-footer,
-    body.reader-fullscreen #sidebar-drawer {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-      transition: opacity 0.2s ease, visibility 0.2s ease;
-    }
-
-    body.reader-fullscreen.reader-ui-visible #app-header,
-    body.reader-fullscreen.reader-ui-visible #app-footer,
-    body.reader-fullscreen.reader-ui-visible #sidebar-drawer {
-      opacity: 1;
-      visibility: visible;
-      pointer-events: auto;
-    }
-
-    body.reader-fullscreen #reader-viewport {
-      padding: 0 !important;
-    }
-
-    body.reader-fullscreen #canvas-wrapper {
-      width: 100% !important;
-      height: 100% !important;
-      max-width: 100vw !important;
-      max-height: 100vh !important;
-      overflow: visible !important;
-      border: none !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      background: #000;
-    }
-
-    body.reader-fullscreen #main-canvas {
-      width: auto;
-      height: auto;
-      max-width: 100vw;
-      max-height: 100vh;
-      object-fit: contain;
-      display: block;
     }
   </style>
 </head>
@@ -331,7 +358,8 @@
       brightness: 100,
       contrast: 100,
       sepia: 0,
-      renderedPageCache: new Map()
+      renderedPageCache: new Map(),
+      immersiveMode: false
     };
 
     const elements = {
@@ -381,13 +409,8 @@
       tapRight: document.getElementById('tap-zone-right')
     };
 
-    function isImmersiveReadingMode() {
-      return state.splitMode === 'full' && !!document.fullscreenElement;
-    }
-
     function updateModeButtons() {
       const isFull = state.splitMode === 'full';
-
       elements.btnMode2Half.className = isFull
         ? 'px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5'
         : 'px-3 py-1.5 rounded-lg text-xs transition flex items-center space-x-1.5 bg-brand-amber text-slate-950 font-bold shadow';
@@ -397,27 +420,54 @@
         : 'px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white hover:bg-dark-hover flex items-center space-x-1.5';
     }
 
-    function syncReaderFullscreenState() {
-      const immersive = isImmersiveReadingMode();
-      document.body.classList.toggle('reader-fullscreen', immersive);
-      document.body.classList.toggle('reader-ui-visible', immersive && state.uiVisible);
-
-      if (immersive) {
-        elements.sidebarDrawer.classList.add('-translate-x-full');
-        state.sidebarOpen = false;
+    async function requestBrowserFullscreen() {
+      if (!document.fullscreenEnabled) return;
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (err) {
+        console.warn('Fullscreen API unavailable or blocked:', err);
       }
+    }
 
-      if (!immersive) {
-        document.body.classList.remove('reader-ui-visible');
-        state.uiVisible = true;
-        elements.appHeader.classList.remove('-translate-y-full');
-        elements.appFooter.classList.remove('translate-y-24');
+    function enterImmersiveMode() {
+      state.immersiveMode = true;
+      document.body.classList.add('reader-fullscreen');
+      document.body.classList.add('reader-ui-visible');
+      state.uiVisible = true;
+      elements.appHeader.classList.remove('-translate-y-full');
+      elements.appFooter.classList.remove('translate-y-24');
+      elements.sidebarDrawer.classList.add('-translate-x-full');
+      state.sidebarOpen = false;
+      requestBrowserFullscreen();
+    }
+
+    function exitImmersiveMode() {
+      state.immersiveMode = false;
+      document.body.classList.remove('reader-fullscreen');
+      document.body.classList.remove('reader-ui-visible');
+      state.uiVisible = true;
+      elements.appHeader.classList.remove('-translate-y-full');
+      elements.appFooter.classList.remove('translate-y-24');
+      elements.sidebarDrawer.classList.add('-translate-x-full');
+      state.sidebarOpen = false;
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function toggleReaderImmersion(force = null) {
+      const nextState = force !== null ? force : !state.immersiveMode;
+      if (nextState) {
+        enterImmersiveMode();
+      } else {
+        exitImmersiveMode();
       }
     }
 
     function getSubPanelBoxes(mode, overlapPct) {
       const overlap = overlapPct / 100;
-
       if (mode === '2half') {
         return [
           { name: 'Top Half', y: 0, height: 0.50 + overlap },
@@ -558,6 +608,7 @@
       const cropW = (activeBox.width || 1.0) * sourceCanvas.width;
       const cropH = (activeBox.height || 1.0) * sourceCanvas.height;
 
+      const isImmersive = state.immersiveMode || state.splitMode === 'full';
       elements.mainCanvas.width = cropW;
       elements.mainCanvas.height = cropH;
 
@@ -567,20 +618,16 @@
 
       elements.mainCanvas.style.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) sepia(${state.sepia}%)`;
 
-      const immersive = isImmersiveReadingMode();
-      elements.canvasWrapper.style.overflow = immersive ? 'visible' : 'hidden';
-      elements.canvasWrapper.style.width = immersive ? '100%' : 'auto';
-      elements.canvasWrapper.style.height = immersive ? '100%' : 'auto';
-      elements.canvasWrapper.style.maxWidth = immersive ? '100vw' : '100%';
-      elements.canvasWrapper.style.maxHeight = immersive ? '100vh' : '100%';
-      elements.canvasWrapper.style.transform = `scale(${state.zoomLevel})`;
-
-      if (immersive) {
-        elements.mainCanvas.style.maxWidth = '100vw';
-        elements.mainCanvas.style.maxHeight = '100vh';
+      if (isImmersive) {
+        elements.canvasWrapper.style.transform = 'scale(1.0)';
+        elements.canvasWrapper.style.width = '100vw';
+        elements.canvasWrapper.style.height = '100dvh';
+        elements.canvasWrapper.style.maxWidth = '100vw';
+        elements.canvasWrapper.style.maxHeight = '100dvh';
+      } else if (state.zoomLevel > 1.0) {
+        elements.canvasWrapper.style.transform = `scale(${state.zoomLevel})`;
       } else {
-        elements.mainCanvas.style.maxWidth = '100%';
-        elements.mainCanvas.style.maxHeight = '100%';
+        elements.canvasWrapper.style.transform = 'scale(1.0)';
       }
 
       updateHUDStatus(activeBox.name, subPanels.length);
@@ -623,11 +670,9 @@
       updateModeButtons();
 
       if (mode === 'full') {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } else if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+        toggleReaderImmersion(true);
+      } else if (state.immersiveMode) {
+        toggleReaderImmersion(false);
       }
 
       renderCurrentView();
@@ -765,7 +810,7 @@
       });
 
       elements.readerViewport.addEventListener('click', (event) => {
-        if (isImmersiveReadingMode() && !event.target.closest('button')) {
+        if (state.immersiveMode && !event.target.closest('button')) {
           toggleUIHUD();
         }
       });
@@ -783,14 +828,14 @@
     }
 
     function toggleUIHUD(show = null) {
-      const immersive = isImmersiveReadingMode();
-      state.uiVisible = show !== null ? show : !state.uiVisible;
-
-      if (immersive) {
-        document.body.classList.toggle('reader-ui-visible', state.uiVisible);
+      if (state.immersiveMode) {
+        const isVisible = show !== null ? show : !document.body.classList.contains('reader-ui-visible');
+        document.body.classList.toggle('reader-ui-visible', isVisible);
+        state.uiVisible = isVisible;
         return;
       }
 
+      state.uiVisible = show !== null ? show : !state.uiVisible;
       if (state.uiVisible) {
         elements.appHeader.classList.remove('-translate-y-full');
         elements.appFooter.classList.remove('translate-y-24');
@@ -875,14 +920,10 @@
       });
 
       elements.btnFullscreen.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-          setSplitMode('full');
+        if (state.immersiveMode) {
+          toggleReaderImmersion(false);
         } else {
-          document.exitFullscreen().catch(() => {});
-          state.splitMode = '2half';
-          updateModeButtons();
-          toggleUIHUD(true);
-          renderCurrentView();
+          toggleReaderImmersion(true);
         }
       });
 
@@ -963,8 +1004,14 @@
       });
 
       document.addEventListener('fullscreenchange', () => {
-        syncReaderFullscreenState();
-        renderCurrentView();
+        if (!document.fullscreenElement && state.immersiveMode) {
+          document.body.classList.remove('reader-fullscreen');
+          document.body.classList.remove('reader-ui-visible');
+          state.uiVisible = true;
+          state.immersiveMode = false;
+          state.splitMode = '2half';
+          updateModeButtons();
+        }
       });
 
       window.addEventListener('resize', () => {
